@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Data & model weights (too large for git)
+data/
+**/checkpoints/
+
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Jupyter
+.ipynb_checkpoints/

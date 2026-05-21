@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GAN Experiments</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222534;
+    --border: #2e3347;
+    --accent: #6c8fff;
+    --accent2: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --success: #34d399;
+    --radius: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 28px 48px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    margin-bottom: 6px;
+    min-height: 80px;
+  }
+  .logo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 130px;
+    height: 130px;
+  }
+  header h1 { font-size: 32px; font-weight: 800; line-height: 1.2; }
+  header p  { color: var(--muted); font-size: 14px; margin-top: 4px; max-width: 560px; }
+  .header-meta {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .meta-chip strong { color: var(--text); }
+
+  /* ── Tab bar ── */
+  #tab-bar {
+    display: flex;
+    gap: 4px;
+    padding: 0 48px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    border-radius: 10px 10px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .15s;
+    position: relative;
+    bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--text); background: var(--surface); }
+  .tab-btn.active {
+    color: var(--accent);
+    background: var(--surface);
+    border-color: var(--border);
+    border-bottom-color: var(--surface);
+  }
+
+  /* ── Tab panels ── */
+  .tab-panel { display: none; flex: 1; }
+  .tab-panel.active { display: flex; flex-direction: column; }
+
+  /* ── Models panel ── */
+  .grid-section {
+    padding: 32px 48px;
+    max-width: 1400px;
+  }
+  .grid-heading {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .grid-heading::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .count-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--accent);
+    color: #fff;
+  }
+  .model-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  /* ── Model card ── */
+  .model-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+    cursor: pointer;
+  }
+  .model-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(108, 143, 255, .12);
+  }
+  .card-thumb {
+    position: relative;
+    background: #0a0c12;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .card-thumb .thumb-placeholder { color: var(--border); font-size: 32px; position: absolute; }
+  .card-thumb .thumb-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 60%, rgba(15,17,23,.8));
+  }
+  .card-tag {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(15,17,23,.75);
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--border);
+    color: var(--success);
+  }
+  .card-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .card-name { font-size: 16px; font-weight: 700; color: var(--text); }
+  .card-desc { font-size: 13px; color: var(--muted); line-height: 1.5; flex: 1; }
+  .card-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-val { font-size: 15px; font-weight: 700; color: var(--accent); }
+  .stat-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .card-footer {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+  }
+  .open-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    text-decoration: none;
+  }
+  .open-btn:hover { background: var(--accent); color: #fff; }
+  .card-path { font-size: 11px; color: var(--border); font-family: monospace; }
+
+  /* ── Notes panel ── */
+  #panel-notes {
+    padding: 20px 48px;
+    flex: 1;
+  }
+  .notes-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+  .notes-toolbar span { color: var(--muted); font-size: 13px; flex: 1; }
+  .notes-open-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .notes-open-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #notes-embed {
+    width: 100%;
+    height: calc(100vh - 260px);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    display: block;
+  }
+
+  /* ── Empty state ── */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state h2 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+
+  /* ── Footer ── */
+  footer {
+    padding: 20px 48px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  footer code {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<script src="models.js"></script>
+<script src="manifest.js"></script>
+
+<header>
+  <div class="header-top">
+    <div class="logo">
+      <svg viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+        <defs>
+          <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="2.5" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <path d="M5,30 C15,30 18,26 22,28 C26,30 28,38 33,30 C38,22 42,5 50,5 C58,5 62,22 67,30 C72,38 74,30 78,28 C82,26 85,30 95,30 C105,30 110,28 115,30"
+              fill="none" stroke="#ff9020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+      </svg>
+    </div>
+    <div style="text-align: center;">
+      <h1>GAN Experiments</h1>
+      <section><p>Intrinsic dimensionality, CKA analysis, and generated image evolution across model runs.</p></section>
+    </div>
+  </div>
+  <div class="header-meta">
+    <span class="meta-chip">Dataset: <strong>MNIST</strong></span>
+    <span class="meta-chip">Framework: <strong>PyTorch</strong></span>
+    <span class="meta-chip" id="model-count-chip">Models: <strong>—</strong></span>
+  </div>
+</header>
+
+<div id="tab-bar">
+  <button class="tab-btn active" id="btn-models" onclick="switchTab('models')">Model Runs</button>
+  <button class="tab-btn" id="btn-notes" onclick="switchTab('notes')">Notes</button>
+</div>
+
+<!-- Models panel -->
+<div class="tab-panel active" id="panel-models">
+  <div class="grid-section">
+    <div class="grid-heading">
+      Model Runs
+      <span class="count-badge" id="count-badge">0</span>
+    </div>
+    <div class="model-grid" id="model-grid"></div>
+  </div>
+</div>
+
+<!-- Notes panel -->
+<div class="tab-panel" id="panel-notes">
+  <div id="panel-notes-inner" style="padding: 20px 48px; flex:1; display:flex; flex-direction:column;">
+    <div class="notes-toolbar">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span>Generative adversarial networks.pdf</span>
+      <a class="notes-open-btn" href="Generative%20adversarial%20networks.pdf" target="_blank" rel="noopener noreferrer">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        Open in new tab
+      </a>
+    </div>
+    <object
+      id="notes-embed"
+      data="Generative%20adversarial%20networks.pdf"
+      type="application/pdf"
+      style="flex:1; min-height: 500px; width:100%; border:1px solid var(--border); border-radius:10px; background:var(--surface);"
+    >
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:400px;gap:16px;color:var(--muted);font-size:14px;">
+        <span>PDF cannot be displayed inline.</span>
+        <a href="Generative%20adversarial%20networks.pdf" target="_blank" style="color:var(--accent);font-weight:600;text-decoration:none;">Open PDF directly →</a>
+      </div>
+    </object>
+  </div>
+</div>
+
+<footer>
+  Serve with <code>python -m http.server 8000</code> from the project root &mdash;
+  then open <code>http://localhost:8000</code>
+</footer>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('btn-' + name).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+function listPngs(dirUrl) {
+  const parts = dirUrl.split('/');
+  const subdir = parts.pop();
+  const basePath = parts.join('/');
+  const entry = (typeof MANIFEST !== 'undefined') ? MANIFEST[basePath] : null;
+  return Promise.resolve(entry ? (entry[subdir] || []) : []);
+}
+
+async function getThumb(model) {
+  const images = await listPngs(`${model.path}/images`);
+  const epochs = images
+    .filter(f => /epoch_\d+\.png/i.test(f))
+    .sort((a, b) => parseInt(a.match(/\d+/)) - parseInt(b.match(/\d+/)));
+  return { src: epochs.length ? `${model.path}/images/${epochs[epochs.length - 1]}` : null, count: epochs.length };
+}
+
+function buildCard(model, index, thumbSrc, epochCount) {
+  const card = document.createElement('a');
+  card.className = 'model-card';
+  card.href = `dashboard.html?model=${index}`;
+  card.innerHTML = `
+    <div class="card-thumb">
+      <span class="thumb-placeholder">&#9642;</span>
+      ${thumbSrc ? `<img src="${thumbSrc}" alt="Last generated epoch" loading="lazy">` : ''}
+      <div class="thumb-overlay"></div>
+      ${model.tag ? `<span class="card-tag">${model.tag}</span>` : ''}
+    </div>
+    <div class="card-body">
+      <div class="card-name">${model.name}</div>
+      <div class="card-desc">${model.desc || 'No description provided.'}</div>
+      <div class="card-stats">
+        <div class="stat">
+          <span class="stat-val">${epochCount || '—'}</span>
+          <span class="stat-lbl">Epochs</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="card-path">${model.path}/</span>
+      <span class="open-btn">
+        Open Dashboard
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </span>
+    </div>
+  `;
+  return card;
+}
+
+async function init() {
+  const grid       = document.getElementById('model-grid');
+  const countBadge = document.getElementById('count-badge');
+  const countChip  = document.getElementById('model-count-chip');
+
+  countBadge.textContent = MODELS.length;
+  countChip.innerHTML    = `Models: <strong>${MODELS.length}</strong>`;
+
+  if (!MODELS.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h2>No models configured</h2></div>`;
+    return;
+  }
+
+  const thumbResults = await Promise.all(MODELS.map(m => getThumb(m)));
+  MODELS.forEach((model, i) => {
+    const { src, count } = thumbResults[i];
+    grid.appendChild(buildCard(model, i, src, count));
+  });
+}
+
+init();
+</script>
+</body>
+</html>

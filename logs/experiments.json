@@ -1,0 +1,197 @@
+[
+  {
+    "id": "vanilla_gan_noisy_real",
+    "name": "Vanilla GAN — Noisy Real Input",
+    "date": "2026-04-26",
+    "model": "Vanilla GAN",
+    "dataset": "MNIST",
+    "variant": "noisy_real",
+    "path": "vanilla_gan_noisy_real",
+    "hypothesis": "Adding Gaussian noise N(0,1) to real images before they are fed to the discriminator weakens D by contaminating its real-image input, helping to balance training dynamics and prevent D from dominating too early.",
+    "code_change": {
+      "file": "train.py",
+      "line": 86,
+      "description": "d_input = real_imgs + torch.randn_like(real_imgs); d_loss_real = criterion(discriminator(d_input), real_labels)"
+    },
+    "config": {
+      "latent_dim": 100,
+      "batch_size": 64,
+      "num_epochs": 75,
+      "lr": 0.0002,
+      "betas": [0.5, 0.999],
+      "optimizer": "Adam",
+      "loss": "BCELoss",
+      "label_smoothing": true,
+      "real_label_value": 0.9,
+      "noise": {
+        "type": "gaussian",
+        "mean": 0,
+        "std": 1,
+        "applied_to": "real_images_only"
+      }
+    },
+    "metrics": {
+      "final_epoch": 75,
+      "g_loss": 1.220454,
+      "d_loss": 1.174379
+    },
+    "log_file": "vanilla_gan_noisy_real/logs/training_log.csv"
+  },
+  {
+    "id": "wgan_noisy_real_v2",
+    "name": "WGAN — Noisy Real Input (Ablation, v2)",
+    "date": "2026-04-26",
+    "model": "WGAN",
+    "dataset": "MNIST",
+    "variant": "noisy_real",
+    "path": "outputs_wgan",
+    "supersedes": "wgan_noisy_real",
+    "hypothesis": "Re-run of the noisy-real WGAN ablation with noise std raised from 0.1 to 0.25 and training extended to 150 epochs, to test whether stronger input perturbation and longer training changes the balance between generator and critic in the Wasserstein framework.",
+    "code_change": {
+      "file": "wgan_train.py",
+      "line": 112,
+      "description": "d_input = real_imgs + 0.25 * torch.randn_like(real_imgs); critic(d_input) instead of critic(real_imgs). Gradient penalty still uses clean real_imgs."
+    },
+    "config": {
+      "optimizer": "RMSprop",
+      "loss": "Wasserstein (negative mean critic scores)",
+      "gradient_penalty": true,
+      "critic_steps_per_gen": 5,
+      "num_epochs": 150,
+      "noise": {
+        "type": "gaussian",
+        "mean": 0,
+        "std": 0.25,
+        "applied_to": "real_images_only"
+      }
+    },
+    "metrics": {
+      "final_epoch": 150,
+      "g_loss": 1.400367,
+      "d_loss": -2.964949,
+      "best_g_loss": {
+        "value": 2.785832,
+        "epoch": 17
+      },
+      "best_d_loss": {
+        "value": -10.357209,
+        "epoch": 3
+      }
+    },
+    "log_file": "logs/wgan_training_log.csv"
+  },
+  {
+    "id": "wgan_clean_375ep",
+    "name": "WGAN-GP — Clean (375 epochs)",
+    "date": "2026-04-26",
+    "model": "WGAN-GP",
+    "dataset": "MNIST",
+    "variant": "clean",
+    "path": "outputs_wgan_375ep_clean",
+    "hypothesis": "Clean WGAN-GP baseline — no noise on real images fed to critic. Used as comparison against noisy-real ablations.",
+    "config": {
+      "latent_dim": 128,
+      "batch_size": 64,
+      "num_epochs": 375,
+      "lr": 0.0001,
+      "optimizer": "Adam",
+      "betas": [0.0, 0.9],
+      "loss": "Wasserstein",
+      "gradient_penalty": true,
+      "lambda_gp": 10.0,
+      "n_critic": 5,
+      "noise_std": 0.0
+    },
+    "metrics": {
+      "final_epoch": 375,
+      "g_loss": -0.357780,
+      "d_loss": -1.935736,
+      "best_g_loss": {
+        "value": -9.821231,
+        "epoch": 1
+      },
+      "best_d_loss": {
+        "value": -10.446144,
+        "epoch": 3
+      }
+    },
+    "log_file": "logs/wgan_training_log.csv"
+  },
+  {
+    "id": "wgan_annealed_noise_500ep",
+    "name": "WGAN-GP — Annealed Noise (500 epochs)",
+    "date": "2026-04-26",
+    "model": "WGAN-GP",
+    "dataset": "MNIST",
+    "variant": "annealed noise on real images",
+    "path": "outputs_wgan_500ep_annealed",
+    "hypothesis": "Annealed Gaussian noise on real images fed to the critic. Noise starts high (std=0.25) to weaken D early, then decays exponentially as 0.25 * exp(-epoch * 0.01), approaching zero by late training. Allows D to recover strength gradually as G improves.",
+    "config": {
+      "latent_dim": 128,
+      "batch_size": 64,
+      "num_epochs": 500,
+      "lr": 0.0001,
+      "optimizer": "Adam",
+      "betas": [0.0, 0.9],
+      "loss": "Wasserstein",
+      "gradient_penalty": true,
+      "lambda_gp": 10.0,
+      "n_critic": 5,
+      "noise_std_initial": 0.25,
+      "noise_decay": 0.01,
+      "noise_schedule": "0.25 * exp(-epoch * 0.01)",
+      "note": "gradient penalty uses clean real_imgs (no noise)"
+    },
+    "metrics": {
+      "final_epoch": 500,
+      "g_loss": 2.059744,
+      "d_loss": -1.422201,
+      "best_g_loss": {
+        "value": 3.856302,
+        "epoch": 5
+      },
+      "best_d_loss": {
+        "value": -10.453624,
+        "epoch": 4
+      }
+    },
+    "log_file": "logs/wgan_training_log.csv"
+  },
+  {
+    "id": "wgan_clean_375ep_v2",
+    "name": "WGAN-GP — Clean Baseline",
+    "date": "2026-04-26",
+    "model": "WGAN-GP",
+    "dataset": "MNIST",
+    "variant": "clean",
+    "path": "outputs_wgan_clean",
+    "hypothesis": "Clean WGAN-GP baseline with no noise on real images (noise_std=0). Used as direct comparison against the noisy-real ablation in `outputs_wgan_375ep_clean`.",
+    "config": {
+      "latent_dim": 128,
+      "batch_size": 64,
+      "num_epochs": 375,
+      "lr": 0.0001,
+      "optimizer": "Adam",
+      "betas": [0.0, 0.9],
+      "loss": "Wasserstein",
+      "gradient_penalty": true,
+      "lambda_gp": 10.0,
+      "n_critic": 5,
+      "noise_std": 0.0
+    },
+    "metrics": {
+      "final_epoch": 375,
+      "g_loss": -0.768882,
+      "d_loss": -1.527596,
+      "best_g_loss": {
+        "value": 3.770673,
+        "epoch": 84
+      },
+      "best_d_loss": {
+        "value": -10.422335,
+        "epoch": 3
+      }
+    },
+    "log_file": "logs/wgan_training_log.csv"
+  }
+]
