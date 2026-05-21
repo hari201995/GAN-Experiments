@@ -1,5 +1,7 @@
 # GAN Experiments — MNIST
 
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+
 Exploring Generative Adversarial Networks on MNIST: from a vanilla GAN baseline to WGAN-GP with ablations on noise injection and annealing strategies.
 
 **Live dashboard → [hari201995.github.io/GAN-Experiments](https://hari201995.github.io/GAN-Experiments/)**
@@ -82,3 +84,10 @@ The dashboard is a static HTML/JS site — no server required.
 
 ## AI
 - Claude Sonnet for dashboarding and framework
+
+---
+
+## License
+
+This work is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+You are free to share and adapt this material for any purpose, provided you give appropriate credit to the original author.
