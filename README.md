@@ -79,3 +79,6 @@ The dashboard is a static HTML/JS site — no server required.
 - PyTorch
 - MNIST dataset
 - Vanilla HTML/CSS/JS (no frameworks)
+
+## AI
+- Claude Sonnet for dashboarding and framework
